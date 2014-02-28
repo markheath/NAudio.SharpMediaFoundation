@@ -1,0 +1,24 @@
+﻿<Window x:Class="SharpMediaFoundationTester.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sharpMediaFoundationTester="clr-namespace:SharpMediaFoundationTester"
+        Title="NAudio.SharpMediaFoundation Tester" Height="387.121" Width="550.455">
+    <Grid>
+        <TabControl>
+            <TabItem Header="Encoder">
+                <sharpMediaFoundationTester:MediaFoundationEncodeView x:Name="EncodeView"></sharpMediaFoundationTester:MediaFoundationEncodeView>
+            </TabItem>
+            <TabItem Header="Playback">
+                <sharpMediaFoundationTester:MediaFoundationPlaybackView x:Name="PlaybackView"></sharpMediaFoundationTester:MediaFoundationPlaybackView>
+            </TabItem>
+            <TabItem Header="Codecs">
+                <sharpMediaFoundationTester:EnumMftView x:Name="EnumView"></sharpMediaFoundationTester:EnumMftView>
+            </TabItem>
+            <TabItem Header="Resampler">
+                <sharpMediaFoundationTester:MediaFoundationResampleView x:Name="ResamplerView"></sharpMediaFoundationTester:MediaFoundationResampleView>
+            </TabItem>
+
+        </TabControl>
+
+    </Grid>
+</Window>
