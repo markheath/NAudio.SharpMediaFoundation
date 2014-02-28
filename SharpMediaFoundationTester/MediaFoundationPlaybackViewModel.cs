@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using Microsoft.Win32;
 using NAudio.SharpMediaFoundation;
 using NAudio.Wave;
+using System.IO;
 
 namespace SharpMediaFoundationTester
 {
@@ -15,7 +16,7 @@ namespace SharpMediaFoundationTester
         private string inputPath;
         private string defaultDecompressionFormat;
         private IWavePlayer wavePlayer;
-        private WaveStream reader;
+        private SharpMediaFoundationReader reader;
         public RelayCommand LoadCommand { get; private set; }
         public RelayCommand PlayCommand { get; private set; }
         public RelayCommand PauseCommand { get; private set; }
@@ -98,24 +99,26 @@ namespace SharpMediaFoundationTester
             var ofd = new OpenFileDialog();
             if (ofd.ShowDialog() == true)
             {
-                if (TryOpenInputFile(ofd.FileName))
+                if (TryOpenInputFile(ofd.OpenFile()))
                 {
-                    TryOpenInputFile(ofd.FileName);
+                    InputPath = ofd.FileName;
+                    lastPlayed = InputPath;
+                    CreatePlayer();
+                    wavePlayer.Init(reader);
                 }
             }
         }
 
-        private bool TryOpenInputFile(string file)
+        private bool TryOpenInputFile(Stream stream)
         {
             bool isValid = false;
             try
             {
-                using (var tempReader = new SharpMediaFoundationReader(file))
-                {
-                    DefaultDecompressionFormat = tempReader.WaveFormat.ToString();
-                    InputPath = file;
-                    isValid = true;
-                }
+                if (reader != null)
+                    reader.Dispose();
+                reader = new SharpMediaFoundationReader(stream);
+                DefaultDecompressionFormat = reader.WaveFormat.ToString();
+                isValid = true;
             }
             catch (Exception e)
             {
@@ -181,10 +184,6 @@ namespace SharpMediaFoundationTester
                 MessageBox.Show("Select a valid input file or URL first");
                 return;
             }
-            if (wavePlayer == null)
-            {
-                CreatePlayer();
-            }
             if (lastPlayed != inputPath && reader != null)
             {
                 reader.Dispose();
@@ -193,7 +192,10 @@ namespace SharpMediaFoundationTester
             if (reader == null)
             {
                 reader = new SharpMediaFoundationReader(inputPath);
-                lastPlayed = inputPath;
+            }
+            if (wavePlayer == null)
+            {
+                CreatePlayer();
                 wavePlayer.Init(reader);
             }
             wavePlayer.Play();
@@ -210,7 +212,6 @@ namespace SharpMediaFoundationTester
 
         private void WavePlayerOnPlaybackStopped(object sender, StoppedEventArgs stoppedEventArgs)
         {
-
             if (reader != null)
             {
                 SliderPosition = 0;
@@ -221,6 +222,9 @@ namespace SharpMediaFoundationTester
             {
                 MessageBox.Show(stoppedEventArgs.Exception.Message, "Error Playing File");
             }
+            wavePlayer.Dispose();
+            wavePlayer = null;
+
             OnPropertyChanged("IsPlaying");
             OnPropertyChanged("IsStopped");
         }
