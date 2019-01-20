@@ -61,8 +61,8 @@ namespace NAudio.SharpMediaFoundation
             var mediaTypes = new List<MediaType>(count);
             for (int n = 0; n < count; n++)
             {
-                var mediaTypeObject = availableTypes.GetElement(n);
-                mediaTypes.Add(new MediaType(mediaTypeObject.NativePointer));
+                var mediaTypeObject = (ComObject)availableTypes.GetElement(n);
+                mediaTypes.Add(new MediaType( mediaTypeObject.NativePointer));
             }
             availableTypes.Dispose();
             return mediaTypes.ToArray();
@@ -209,7 +209,7 @@ namespace NAudio.SharpMediaFoundation
                 attributes.Set(SinkWriterAttributeKeys.ReadwriteEnableHardwareTransforms.Guid, (UInt32) 1);
                 try
                 {
-                    writer = MediaFactory.CreateSinkWriterFromURL(outputFile, IntPtr.Zero, attributes);
+                    writer = MediaFactory.CreateSinkWriterFromURL(outputFile, null, attributes);
                 }
                 catch (COMException e)
                 {

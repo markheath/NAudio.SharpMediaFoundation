@@ -17,9 +17,7 @@ Benefits compared to using the standard NAudio classes:
  - Reader does not need to recreate its internal COM object when accessed from another thread
  - Probably performance is better (although see note below)
 
-Currently this is using a custom (debug) build of SharpDX.dll and SharpDX.MediaFoundation.dll. Once a new release of SharpDX containing the enhancements for NAudio has been released, this project will be able to take a dependency on the NuGet SharpDX package, and itself be published as a NuGet package.
-
-
+Once a new release of SharpDX containing the enhancements for NAudio has been released, this project will be able to take a dependency on the NuGet SharpDX package, and itself be published as a NuGet package.
 
 
 Installing
@@ -32,4 +30,4 @@ Currently you'll need to do your own build. Download the source and build it. Th
  - SharpDX.MediaFoundation.dll
  - NAudio.SharpMediaFoundation.dll
  
-It is built against .NET 3.5, and should work just fine with .NET 4, 4.5, 4.5.1 etc.
+It is built against .NET 4, and should work just fine with .NET 4.5, 4.5.1 etc.

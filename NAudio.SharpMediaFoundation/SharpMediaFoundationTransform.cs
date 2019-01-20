@@ -187,7 +187,7 @@ namespace NAudio.SharpMediaFoundation
             var pBuffer= MediaFactory.CreateMemoryBuffer(outputBuffer.Length);
             sample.AddBuffer(pBuffer);
             sample.SampleTime = outputPosition; // hopefully this is not needed
-            outputDataBuffer[0].PSample = sample.NativePointer;
+            outputDataBuffer[0].PSample = sample; //.NativePointer;
 
             TransformProcessOutputStatus status;
             var needsMoreInput = transform.ProcessOutput(TransformProcessOutputFlags.None, outputDataBuffer, out status);
