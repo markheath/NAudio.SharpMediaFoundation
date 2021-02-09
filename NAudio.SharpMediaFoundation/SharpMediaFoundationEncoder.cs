@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
-using NAudio.MediaFoundation;
 using NAudio.Utils;
 using NAudio.Wave;
 using SharpDX;
@@ -17,6 +16,8 @@ namespace NAudio.SharpMediaFoundation
     /// </summary>
     public class SharpMediaFoundationEncoder : IDisposable
     {
+        private const int MF_E_NOT_FOUND = unchecked((int)0xC00D36D5);
+
         /// <summary>
         /// Queries the available bitrates for a given encoding output type, sample rate and number of channels
         /// </summary>
@@ -56,7 +57,6 @@ namespace NAudio.SharpMediaFoundation
                 }
                 throw;
             }
-
             int count = availableTypes.ElementCount;
             var mediaTypes = new List<MediaType>(count);
             for (int n = 0; n < count; n++)
@@ -79,10 +79,8 @@ namespace NAudio.SharpMediaFoundation
         {
             var mediaType = SelectMediaType(AudioFormatGuids.WMAudioV8, inputProvider.WaveFormat, desiredBitRate);
             if (mediaType == null) throw new InvalidOperationException("No suitable WMA encoders available");
-            using (var encoder = new SharpMediaFoundationEncoder(mediaType))
-            {
-                encoder.Encode(outputFile, inputProvider);
-            }
+            using var encoder = new SharpMediaFoundationEncoder(mediaType);
+            encoder.Encode(outputFile, inputProvider);
         }
 
         /// <summary>
@@ -96,10 +94,8 @@ namespace NAudio.SharpMediaFoundation
         {
             var mediaType = SelectMediaType(AudioFormatGuids.Mp3, inputProvider.WaveFormat, desiredBitRate);
             if (mediaType == null) throw new InvalidOperationException("No suitable MP3 encoders available");
-            using (var encoder = new SharpMediaFoundationEncoder(mediaType))
-            {
-                encoder.Encode(outputFile, inputProvider);
-            }
+            using var encoder = new SharpMediaFoundationEncoder(mediaType);
+            encoder.Encode(outputFile, inputProvider);
         }
 
         /// <summary>
@@ -115,12 +111,10 @@ namespace NAudio.SharpMediaFoundation
             // http://msdn.microsoft.com/en-gb/library/windows/desktop/dd742785%28v=vs.85%29.aspx
             var mediaType = SelectMediaType(AudioFormatGuids.Aac, inputProvider.WaveFormat, desiredBitRate);
             if (mediaType == null) throw new InvalidOperationException("No suitable AAC encoders available");
-            using (var encoder = new SharpMediaFoundationEncoder(mediaType))
-            {
-                // should AAC container have ADTS, or is that just for ADTS?
-                // http://www.hydrogenaudio.org/forums/index.php?showtopic=97442
-                encoder.Encode(outputFile, inputProvider);
-            }
+            using var encoder = new SharpMediaFoundationEncoder(mediaType);
+            // should AAC container have ADTS, or is that just for ADTS?
+            // http://www.hydrogenaudio.org/forums/index.php?showtopic=97442
+            encoder.Encode(outputFile, inputProvider);
         }
 
         /// <summary>
@@ -151,8 +145,7 @@ namespace NAudio.SharpMediaFoundation
         public SharpMediaFoundationEncoder(MediaType outputMediaType)
         {
             MediaManager.Startup();
-            if (outputMediaType == null) throw new ArgumentNullException("outputMediaType");
-            this.outputMediaType = outputMediaType;
+            this.outputMediaType = outputMediaType ?? throw new ArgumentNullException(nameof(outputMediaType));
         }
 
         /// <summary>
@@ -178,22 +171,18 @@ namespace NAudio.SharpMediaFoundation
                 inputProvider.WaveFormat.BitsPerSample);
 
             
-            var inputMediaType = new MediaType();
+            using var inputMediaType = new MediaType();
             var size = 18 + sharpWf.ExtraSize;
             
             MediaFactory.InitMediaTypeFromWaveFormatEx(inputMediaType, new[] { sharpWf }, size);
 
-            using (var writer = CreateSinkWriter(outputFile))
-            {
-                int streamIndex;
-                writer.AddStream(outputMediaType, out streamIndex);
+            using var writer = CreateSinkWriter(outputFile);
+            writer.AddStream(outputMediaType, out int streamIndex);
 
-                // n.b. can get 0xC00D36B4 - MF_E_INVALIDMEDIATYPE here
-                writer.SetInputMediaType(streamIndex, inputMediaType, null);
+            // n.b. can get 0xC00D36B4 - MF_E_INVALIDMEDIATYPE here
+            writer.SetInputMediaType(streamIndex, inputMediaType, null);
 
-                PerformEncode(writer, streamIndex, inputProvider);
-            }
-            inputMediaType.Dispose();
+            PerformEncode(writer, streamIndex, inputProvider);
         }
 
         private static SinkWriter CreateSinkWriter(string outputFile)
@@ -213,7 +202,7 @@ namespace NAudio.SharpMediaFoundation
                 }
                 catch (COMException e)
                 {
-                    if (e.GetHResult() == MediaFoundationErrors.MF_E_NOT_FOUND)
+                    if (e.GetHResult() == MF_E_NOT_FOUND)
                     {
                         throw new ArgumentException("Was not able to create a sink writer for this file extension");
                     }
@@ -250,13 +239,11 @@ namespace NAudio.SharpMediaFoundation
         private long ConvertOneBuffer(SinkWriter writer, int streamIndex, IWaveProvider inputProvider, long position, byte[] managedBuffer)
         {
             long durationConverted = 0;
-            var buffer = MediaFactory.CreateMemoryBuffer(managedBuffer.Length);          
-            var sample = MediaFactory.CreateSample();
+            using var buffer = MediaFactory.CreateMemoryBuffer(managedBuffer.Length);          
+            using var sample = MediaFactory.CreateSample();
             sample.AddBuffer(buffer);
 
-            int currentLength;
-            int maxLength; // = buffer.MaxLength;
-            var ptr = buffer.Lock(out maxLength, out currentLength);
+            var ptr = buffer.Lock(out int maxLength, out int currentLength);
             int read = inputProvider.Read(managedBuffer, 0, maxLength);
             if (read > 0)
             {
@@ -273,9 +260,6 @@ namespace NAudio.SharpMediaFoundation
             {
                 buffer.Unlock();
             }
-
-            sample.Dispose();
-            buffer.Dispose();
             return durationConverted;
         }
 

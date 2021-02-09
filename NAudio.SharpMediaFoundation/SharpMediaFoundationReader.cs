@@ -72,8 +72,7 @@ namespace NAudio.SharpMediaFoundation
         private WaveFormat GetCurrentWaveFormat()
         {
             var uncompressedMediaType = reader.GetCurrentMediaType(SourceReaderIndex.FirstAudioStream);
-            int bufferSize;
-            var sharpWf = uncompressedMediaType.ExtracttWaveFormat(out bufferSize);
+            var sharpWf = uncompressedMediaType.ExtracttWaveFormat(out int _);
 
             return sharpWf.Encoding == WaveFormatEncoding.Pcm
                 ? new WaveFormat(sharpWf.SampleRate, sharpWf.BitsPerSample, sharpWf.Channels)
@@ -103,10 +102,7 @@ namespace NAudio.SharpMediaFoundation
 
             while (bytesWritten < count)
             {
-                SourceReaderFlags dwFlags;
-                long timestamp;
-                int actualStreamIndex;
-                var sample = reader.ReadSample(SourceReaderIndex.FirstAudioStream, 0, out actualStreamIndex, out dwFlags, out timestamp);
+                using var sample = reader.ReadSample(SourceReaderIndex.FirstAudioStream, 0, out int actualStreamIndex, out SourceReaderFlags dwFlags, out long timestamp);
                 if ((dwFlags & SourceReaderFlags.Endofstream) != 0)
                 {
                     // reached the end of the stream
@@ -124,11 +120,9 @@ namespace NAudio.SharpMediaFoundation
                     throw new InvalidOperationException(String.Format("MediaFoundationReadError {0}", dwFlags));
                 }
 
-                var mediaBuffer = sample.ConvertToContiguousBuffer();
+                using var mediaBuffer = sample.ConvertToContiguousBuffer();
                 
-                int cbBuffer;
-                int pcbMaxLength;
-                var pAudioData = mediaBuffer.Lock(out pcbMaxLength, out cbBuffer);
+                var pAudioData = mediaBuffer.Lock(out int pcbMaxLength, out int cbBuffer);
                 EnsureBuffer(cbBuffer);
                 Marshal.Copy(pAudioData, decoderOutputBuffer, 0, cbBuffer);
                 decoderOutputOffset = 0;
@@ -136,10 +130,7 @@ namespace NAudio.SharpMediaFoundation
 
                 bytesWritten += ReadFromDecoderBuffer(buffer, offset + bytesWritten, count - bytesWritten);
 
-
                 mediaBuffer.Unlock();
-                mediaBuffer.Dispose();
-                sample.Dispose();
             }
             position += bytesWritten;
             return bytesWritten;

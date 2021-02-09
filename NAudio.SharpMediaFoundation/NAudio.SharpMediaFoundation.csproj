@@ -1,25 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net40</TargetFrameworks>
-    <Version>0.1</Version>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Version>0.2</Version>
     <Authors>Mark Heath</Authors>
     <Description>NAudio MediaFoundation Support based on SharpDX</Description>
-    <PackageLicenseUrl>https://github.com/naudio/NAudio/blob/master/license.txt</PackageLicenseUrl>
+    <PackageLicenseUrl></PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/markheath/NAudio.SharpMediaFoundation</PackageProjectUrl>
     <PackageTags>C# .NET audio sound</PackageTags>
     <RepositoryUrl>https://github.com/markheath/NAudio.SharpMediaFoundation</RepositoryUrl>
-    <Copyright>© Mark Heath 2019</Copyright>
+    <Copyright>© Mark Heath 2021</Copyright>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile Condition=" '$(Configuration)' == 'Release' ">true</GenerateDocumentationFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+	<LangVersion>8.0</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NAudio" Version="1.7.0" />
+    <PackageReference Include="NAudio.Core" Version="2.0.0" />
     <PackageReference Include="SharpDX.MediaFoundation" Version="4.2.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Properties\" />
   </ItemGroup>
 </Project>

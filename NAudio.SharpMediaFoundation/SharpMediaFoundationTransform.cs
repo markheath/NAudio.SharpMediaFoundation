@@ -118,28 +118,29 @@ namespace NAudio.SharpMediaFoundation
 
             while (bytesWritten < count)
             {
-                var sample = ReadFromSource();
-                if (sample == null) // reached the end of our input
+                using (var sample = ReadFromSource())
                 {
-                    // be good citizens and send some end messages:
-                    EndStreamAndDrain();
-                    // resampler might have given us a little bit more to return
-                    bytesWritten += ReadFromOutputBuffer(buffer, offset + bytesWritten, count - bytesWritten);
-                    break;
+                    if (sample == null) // reached the end of our input
+                    {
+                        // be good citizens and send some end messages:
+                        EndStreamAndDrain();
+                        // resampler might have given us a little bit more to return
+                        bytesWritten += ReadFromOutputBuffer(buffer, offset + bytesWritten, count - bytesWritten);
+                        break;
+                    }
+
+                    // might need to resurrect the stream if the user has read all the way to the end,
+                    // and then repositioned the input backwards
+                    if (!initializedForStreaming)
+                    {
+                        InitializeTransformForStreaming();
+                    }
+
+                    // give the input to the resampler
+                    // can get MF_E_NOTACCEPTING if we didn't drain the buffer properly
+                    transform.ProcessInput(0, sample, 0);
+
                 }
-
-                // might need to resurrect the stream if the user has read all the way to the end,
-                // and then repositioned the input backwards
-                if (!initializedForStreaming)
-                {
-                    InitializeTransformForStreaming();
-                }
-
-                // give the input to the resampler
-                // can get MF_E_NOTACCEPTING if we didn't drain the buffer properly
-                transform.ProcessInput(0, sample, 0);
-
-                sample.Dispose();
 
                 // n.b. in theory we ought to loop here, although we'd need to be careful as the next time into ReadFromTransform there could
                 // still be some leftover bytes in outputBuffer, which would get overwritten. Only introduce this if we find a transform that 
@@ -183,38 +184,30 @@ namespace NAudio.SharpMediaFoundation
             var outputDataBuffer = new TOutputDataBuffer[1];
         
             // we have to create our own for
-            var sample = MediaFactory.CreateSample();
-            var pBuffer= MediaFactory.CreateMemoryBuffer(outputBuffer.Length);
+            using var sample = MediaFactory.CreateSample();
+            using var pBuffer= MediaFactory.CreateMemoryBuffer(outputBuffer.Length);
             sample.AddBuffer(pBuffer);
             sample.SampleTime = outputPosition; // hopefully this is not needed
             outputDataBuffer[0].PSample = sample; //.NativePointer;
 
-            TransformProcessOutputStatus status;
-            var needsMoreInput = transform.ProcessOutput(TransformProcessOutputFlags.None, outputDataBuffer, out status);
+            var needsMoreInput = transform.ProcessOutput(TransformProcessOutputFlags.None, outputDataBuffer, out TransformProcessOutputStatus status);
             // **** BUG in SharpDX Transform.ProcessOutput - returns the opposite of what you expect
             if (!needsMoreInput)
             {
-                pBuffer.Dispose();
-                sample.Dispose();
                 // nothing to read
                 return 0;
             }
 
-            var outputMediaBuffer = sample.ConvertToContiguousBuffer();
+            using var outputMediaBuffer = sample.ConvertToContiguousBuffer();
             //outputDataBuffer[0].PSample.ConvertToContiguousBuffer(out outputMediaBuffer);
         
-            int outputBufferLength;
-            int maxSize;
-            IntPtr pOutputBuffer = outputMediaBuffer.Lock(out maxSize, out outputBufferLength);
+            IntPtr pOutputBuffer = outputMediaBuffer.Lock(out int maxSize, out int outputBufferLength);
             outputBuffer = BufferHelpers.Ensure(outputBuffer, outputBufferLength);
             Marshal.Copy(pOutputBuffer, outputBuffer, 0, outputBufferLength);
             outputBufferOffset = 0;
             outputBufferCount = outputBufferLength;
             outputMediaBuffer.Unlock();
             outputPosition += BytesToNsPosition(outputBufferCount, WaveFormat); // hopefully not needed
-            pBuffer.Dispose();
-            sample.Dispose();
-            outputMediaBuffer.Dispose();
             return outputBufferLength;
         }
 
@@ -233,8 +226,7 @@ namespace NAudio.SharpMediaFoundation
             Sample sample;
             using (var mediaBuffer = MediaFactory.CreateMemoryBuffer(bytesRead))
             {
-                int maxLength, currentLength;
-                var pBuffer = mediaBuffer.Lock(out maxLength, out currentLength);
+                var pBuffer = mediaBuffer.Lock(out int maxLength, out int currentLength);
                 Marshal.Copy(sourceBuffer, 0, pBuffer, bytesRead);
                 mediaBuffer.Unlock();
                 mediaBuffer.CurrentLength = bytesRead;

@@ -63,12 +63,11 @@ namespace NAudio.SharpMediaFoundation
 #endif
         }
 
-#if NETFX_CORE
-
-        
-
-#endif
         private static readonly Guid ResamplerClsid = new Guid("f447b69e-1884-4a7e-8055-346f74d6edb3");
+
+#if NETFX_CORE
+// MediaFactory.FindTransform unavailable
+        
         private static readonly Guid IMFTransformIid = new Guid("bf94c121-5b05-4e6f-8000-ba598961414d");
 
         private IntPtr CreateResamplerComObjectUsingActivator()
@@ -86,6 +85,7 @@ namespace NAudio.SharpMediaFoundation
             }
             return IntPtr.Zero;
         }
+#endif
         /// <summary>
         /// Creates and configures the actual Resampler transform
         /// </summary>
